@@ -687,7 +687,8 @@ async function main(): Promise<void> {
     `;
 
     el.querySelectorAll<HTMLDivElement>('.cat-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
         const cat     = item.dataset.cat!;
         const check   = item.querySelector<HTMLDivElement>('.cat-check')!;
         const color   = CAT_COLOR[cat];
@@ -785,6 +786,7 @@ async function main(): Promise<void> {
     if (catOpen && !catDropdownEl.contains(e.target as Node) && e.target !== btnCategories) {
       catDropdownEl.classList.remove('open');
       catOpen = false; setButtonActive(btnCategories, false);
+      overlayEl.classList.remove('active');
     }
   });
 
@@ -829,7 +831,8 @@ async function main(): Promise<void> {
     `;
 
     el.querySelectorAll<HTMLDivElement>('.cat-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
         const fmt    = item.dataset.fmt!;
         const check  = item.querySelector<HTMLDivElement>('.cat-check')!;
         const FILL_S = `font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 18;`;
@@ -887,9 +890,9 @@ async function main(): Promise<void> {
 
   document.addEventListener('click', (e) => {
     if (evOpen  && !evDropdownEl.contains(e.target as Node)  && e.target !== btnEventos)
-      { evDropdownEl.classList.remove('open');  evOpen  = false; setButtonActive(btnEventos, false); }
+      { evDropdownEl.classList.remove('open');  evOpen  = false; setButtonActive(btnEventos, false);     overlayEl.classList.remove('active'); }
     if (recOpen && !recDropdownEl.contains(e.target as Node) && e.target !== btnRecurrentes)
-      { recDropdownEl.classList.remove('open'); recOpen = false; setButtonActive(btnRecurrentes, false); }
+      { recDropdownEl.classList.remove('open'); recOpen = false; setButtonActive(btnRecurrentes, false);  overlayEl.classList.remove('active'); }
   });
 
   // ── Calendar dropdown ─────────────────────────────────
@@ -1052,6 +1055,7 @@ async function main(): Promise<void> {
     if (calOpen && !calDropdownEl.contains(e.target as Node) && e.target !== btnCalendar) {
       calDropdownEl.classList.remove('open'); calOpen = false;
       setButtonActive(btnCalendar, calPreset !== 'any');
+      overlayEl.classList.remove('active');
     }
   });
 
