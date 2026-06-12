@@ -1,0 +1,155 @@
+<!doctype html>
+<html class="light" lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrada Libre · Mapa de Eventos</title>
+  <link rel="icon" type="image/png" href="/images/cropped-favicon-48-150x150.png" />
+
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" />
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden relative">
+
+  <!-- Mapa Cesium (reemplaza el map-bg de Vista) -->
+  <div id="cesium-container"></div>
+
+  <!-- ── Floating Top Navigation Bar ────────────────────── -->
+  <header class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 pointer-events-none">
+
+    <!-- Brand pill -->
+    <div class="bg-[#0066FF] rounded-full px-4 py-2.5 level-2-shadow pointer-events-auto flex items-center shrink-0">
+      <img src="/images/logomehorizontalPNG.png" alt="Entrada Libre" style="height:28px;width:auto;" />
+    </div>
+
+    <!-- Main nav pill -->
+    <nav class="bg-white/90 glass-blur rounded-full px-2 py-1.5 level-2-shadow border border-outline-variant/30 pointer-events-auto flex items-center gap-1">
+
+      <!-- Search -->
+      <div id="search-wrapper" class="relative flex items-center gap-2 pl-3 pr-2 border-r border-outline-variant/20">
+        <span class="material-symbols-outlined text-primary text-[20px]">search</span>
+        <input
+          id="search-input"
+          class="bg-transparent border-none focus:ring-0 text-[14px] font-medium w-32 md:w-48 text-on-surface placeholder:text-on-surface-variant/50 outline-none"
+          placeholder="Buscar..."
+          type="text"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Nav buttons -->
+      <div class="flex items-center gap-1 px-2">
+        <button id="btn-calendar" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high text-[14px] font-medium transition-colors whitespace-nowrap">
+          <span class="material-symbols-outlined text-[20px]">calendar_today</span>
+          <span>Calendario</span>
+        </button>
+        <button id="btn-categories" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high text-[14px] font-medium transition-colors whitespace-nowrap">
+          <span class="material-symbols-outlined text-[20px]">category</span>
+          <span>Categorías</span>
+        </button>
+        <button id="btn-eventos" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high text-[14px] font-medium transition-colors whitespace-nowrap">
+          <span class="material-symbols-outlined text-[20px]">event</span>
+          <span>Eventos</span>
+        </button>
+        <button id="btn-recurrentes" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high text-[14px] font-medium transition-colors whitespace-nowrap">
+          <span class="material-symbols-outlined text-[20px]">update</span>
+          <span>Recurrentes</span>
+        </button>
+      </div>
+
+    </nav>
+  </header>
+
+  <!-- ── Bottom-right: Zoom + Location ──────────────────── -->
+  <div id="zoom-controls" class="fixed bottom-6 right-6 z-40 flex flex-col gap-4 items-end pointer-events-none">
+    <div class="flex flex-col gap-2 pointer-events-auto">
+      <button data-zoom="in" class="w-10 h-10 bg-white rounded-xl flex items-center justify-center level-2-shadow border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface hover:scale-110 active:scale-95 transition-all duration-150">
+        <span class="material-symbols-outlined">add</span>
+      </button>
+      <button data-zoom="out" class="w-10 h-10 bg-white rounded-xl flex items-center justify-center level-2-shadow border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface hover:scale-110 active:scale-95 transition-all duration-150">
+        <span class="material-symbols-outlined">remove</span>
+      </button>
+      <button data-location class="w-12 h-12 bg-white rounded-full flex items-center justify-center level-2-shadow border border-outline-variant/20 text-on-surface-variant hover:text-primary hover:scale-110 active:scale-95 transition-all duration-150 mt-2">
+        <span class="material-symbols-outlined">my_location</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile overlay (backdrop for bottom sheets) -->
+  <div id="mobile-overlay"></div>
+
+  <!-- Search dropdown (outside nav to avoid overflow clipping) -->
+  <div id="search-dropdown"></div>
+  <!-- Calendar dropdown -->
+  <div id="calendar-dropdown"></div>
+  <!-- Categories dropdown -->
+  <div id="categories-dropdown"></div>
+  <!-- Eventos dropdown -->
+  <div id="eventos-dropdown"></div>
+  <!-- Recurrentes dropdown -->
+  <div id="recurrentes-dropdown"></div>
+
+  <!-- ── Mobile Header (≤640px only) ──────────────────────── -->
+  <div id="mobile-header">
+    <div class="mobile-logo-pill">
+      <img src="/images/logomehorizontalPNG.png" alt="Entrada Libre" />
+    </div>
+    <button id="mobile-search-btn" aria-label="Buscar">
+      <span class="material-symbols-outlined">search</span>
+    </button>
+  </div>
+
+  <!-- ── Mobile Search Overlay ────────────────────────────── -->
+  <div id="mobile-search-overlay">
+    <div class="mobile-search-row">
+      <span class="material-symbols-outlined mobile-search-icon">search</span>
+      <input id="mobile-search-input" placeholder="Buscar eventos..." type="text" autocomplete="off" />
+      <button id="mobile-search-close" aria-label="Cerrar búsqueda">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div id="mobile-search-results"></div>
+  </div>
+
+  <!-- ── Mobile Bottom Bar ────────────────────────────────── -->
+  <div id="mobile-bottom-bar">
+    <button id="mb-btn-calendar" class="mb-btn">
+      <span class="material-symbols-outlined">calendar_today</span>
+      <span>Calendario</span>
+    </button>
+    <button id="mb-btn-categories" class="mb-btn">
+      <span class="material-symbols-outlined">category</span>
+      <span>Categorías</span>
+    </button>
+    <button id="mb-btn-eventos" class="mb-btn">
+      <span class="material-symbols-outlined">event</span>
+      <span>Eventos</span>
+    </button>
+    <button id="mb-btn-recurrentes" class="mb-btn">
+      <span class="material-symbols-outlined">update</span>
+      <span>Recurrentes</span>
+    </button>
+  </div>
+
+  <!-- ── Mobile Filter Modal ──────────────────────────────── -->
+  <div id="mobile-filter-modal">
+    <div id="mobile-filter-modal-content">
+      <button id="mobile-filter-modal-close" aria-label="Cerrar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <div id="mobile-filter-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Preloader ──────────────────────────────────────── -->
+  <div id="preloader">
+    <img src="/images/logomehorizontalPNG.png" alt="Entrada Libre" />
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
