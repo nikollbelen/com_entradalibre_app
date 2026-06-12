@@ -589,20 +589,27 @@ async function main(): Promise<void> {
           closeDropdown();
           searchInput.value = '';
 
-          // Fly to event and open its card
-          viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(ev.longitude, ev.latitude, 1500),
-            duration: 1,
-            easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
-            complete: () => {
-              const ent = entityMap.get(id)!;
-              const pos = getScreenPos(ent, { x: 0, y: 0 });
-              selectedId = id;
-              activatePinVisual(id);
-              showPulse(pos.x, pos.y, ev.category);
-              showCard(ev, pos.x, pos.y);
-            },
-          });
+          const flyToEvent = () => {
+            viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(ev.longitude, ev.latitude, 1500),
+              duration: 1,
+              easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
+              complete: () => {
+                const ent = entityMap.get(id)!;
+                const pos = getScreenPos(ent, { x: 0, y: 0 });
+                selectedId = id;
+                activatePinVisual(id);
+                showPulse(pos.x, pos.y, ev.category);
+                showCard(ev, pos.x, pos.y);
+              },
+            });
+          };
+
+          if (!isEventVisibleWithCurrentFilters(ev)) {
+            showFilterConflictModal(ev.title, flyToEvent);
+          } else {
+            flyToEvent();
+          }
         });
       });
     }
@@ -762,6 +769,44 @@ async function main(): Promise<void> {
         activePins.delete(ev.id);
       }
     }
+  }
+
+  function isEventVisibleWithCurrentFilters(ev: MapEvent): boolean {
+    if (!activeCategories.has(ev.category)) return false;
+    if (!activeFormats.has(ev.format)) return false;
+    const { start: rangeS, end: rangeE } = getCalRange();
+    if (rangeS && rangeE && ev.frequency_type === 'temporary' && ev.start_date) {
+      const evS = new Date(ev.start_date); evS.setHours(0, 0, 0, 0);
+      const evE = ev.end_date ? new Date(ev.end_date) : new Date(evS); evE.setHours(0, 0, 0, 0);
+      if (!(evS <= rangeE && evE >= rangeS)) return false;
+    }
+    return true;
+  }
+
+  function clearAllFilters(): void {
+    allCategories.forEach(cat => activeCategories.add(cat));
+    [...new Set(events.map(e => e.format))].forEach(fmt => activeFormats.add(fmt));
+    calPreset = 'any';
+    calRangeStart = null;
+    calRangeEnd = null;
+    closeAllDropdowns();
+    applyFilters();
+    updateMobileButtonStates();
+  }
+
+  function showFilterConflictModal(evTitle: string, onConfirm: () => void): void {
+    const modal = document.getElementById('filter-conflict-modal');
+    const msg   = document.getElementById('filter-conflict-msg');
+    if (!modal || !msg) return;
+    msg.textContent = `"${evTitle}" no está dentro de los filtros activos. ¿Deseas limpiar los filtros para verlo?`;
+    (modal as any).__onConfirm = onConfirm;
+    modal.classList.add('open');
+  }
+
+  function hideFilterConflictModal(): void {
+    const modal = document.getElementById('filter-conflict-modal');
+    modal?.classList.remove('open');
+    if (modal) delete (modal as any).__onConfirm;
   }
 
   let catOpen = false;
@@ -1177,19 +1222,28 @@ async function main(): Promise<void> {
             mobileSearchOverlay?.classList.remove('open');
             if (mobileSearchInput)   mobileSearchInput.value = '';
             if (mobileSearchResults) mobileSearchResults.innerHTML = '';
-            viewer.camera.flyTo({
-              destination: Cesium.Cartesian3.fromDegrees(ev.longitude, ev.latitude, 1500),
-              duration: 1,
-              easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
-              complete: () => {
-                const ent = entityMap.get(id)!;
-                const pos = getScreenPos(ent, { x: 0, y: 0 });
-                selectedId = id;
-                activatePinVisual(id);
-                showPulse(pos.x, pos.y, ev.category);
-                showCard(ev, pos.x, pos.y);
-              },
-            });
+
+            const flyToEvent = () => {
+              viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(ev.longitude, ev.latitude, 1500),
+                duration: 1,
+                easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
+                complete: () => {
+                  const ent = entityMap.get(id)!;
+                  const pos = getScreenPos(ent, { x: 0, y: 0 });
+                  selectedId = id;
+                  activatePinVisual(id);
+                  showPulse(pos.x, pos.y, ev.category);
+                  showCard(ev, pos.x, pos.y);
+                },
+              });
+            };
+
+            if (!isEventVisibleWithCurrentFilters(ev)) {
+              showFilterConflictModal(ev.title, flyToEvent);
+            } else {
+              flyToEvent();
+            }
           });
         });
       }
@@ -1251,6 +1305,23 @@ async function main(): Promise<void> {
     if (!mobileFilterModalBody) return;
     buildFmtDropdown('permanent', mobileFilterModalBody);
     openMobileModal();
+  });
+
+  // ── Filter Conflict Modal buttons ───────────────────────
+  document.getElementById('filter-conflict-yes')?.addEventListener('click', () => {
+    const modal = document.getElementById('filter-conflict-modal');
+    const cb = modal ? (modal as any).__onConfirm as (() => void) | undefined : undefined;
+    hideFilterConflictModal();
+    clearAllFilters();
+    cb?.();
+  });
+
+  document.getElementById('filter-conflict-no')?.addEventListener('click', () => {
+    hideFilterConflictModal();
+  });
+
+  document.getElementById('filter-conflict-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) hideFilterConflictModal();
   });
 }
 
