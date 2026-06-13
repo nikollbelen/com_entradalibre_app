@@ -90,36 +90,50 @@ const PRIMARY        = '#0066FF';
 const SECONDARY      = '#50616b';
 const INACTIVE_SIZE  = 52;
 const ACTIVE_SIZE    = 60;
+// Teardrop pin: height/width ratio (circle head + pointed tail + shadow room)
+const PIN_H_RATIO    = 1.35;
 
 // ── Build pin canvas ──────────────────────────────────────
 function buildPin(category: Category, active: boolean): HTMLCanvasElement {
-  const r    = active ? 22 : 18;
-  const pad  = 8;
-  const size = (r + pad) * 2;
-  const cx   = size / 2;
-  const cy   = size / 2;
+  const r         = active ? 22 : 18;
+  const pad       = 8;
+  const shadowPad = 5;
+  const w   = (r + pad) * 2;
+  const h   = Math.round(w * PIN_H_RATIO);
+  const cx  = w / 2;
+  const cy  = r + pad;           // circle center y from top
+  const tipY = h - shadowPad;    // tip y (above canvas bottom for shadow room)
+  const tail = tipY - cy - r;    // distance from circle bottom to tip
 
   const canvas = document.createElement('canvas');
-  canvas.width  = size;
-  canvas.height = size;
+  canvas.width  = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.shadowColor   = 'rgba(15,23,42,0.20)';
-  ctx.shadowBlur    = active ? 12 : 7;
-  ctx.shadowOffsetY = active ? 4 : 2;
+  ctx.shadowColor   = 'rgba(15,23,42,0.28)';
+  ctx.shadowBlur    = active ? 14 : 8;
+  ctx.shadowOffsetY = active ? 5 : 3;
+  ctx.shadowOffsetX = 1;
 
+  // Smooth teardrop: 4 cubic beziers (circle approximation + tapered sides)
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = active ? CAT_COLOR[category] : 'white';
+  ctx.moveTo(cx, cy - r);
+  ctx.bezierCurveTo(cx + r * 0.5523, cy - r,  cx + r, cy - r * 0.5523,  cx + r, cy);
+  ctx.bezierCurveTo(cx + r, cy + tail * 0.65,  cx + r * 0.38, tipY,  cx, tipY);
+  ctx.bezierCurveTo(cx - r * 0.38, tipY,  cx - r, cy + tail * 0.65,  cx - r, cy);
+  ctx.bezierCurveTo(cx - r, cy - r * 0.5523,  cx - r * 0.5523, cy - r,  cx, cy - r);
+  ctx.closePath();
+
+  ctx.fillStyle = CAT_COLOR[category];
   ctx.fill();
 
   ctx.shadowColor = 'transparent';
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth   = 2.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth   = 2;
   ctx.stroke();
 
   ctx.font         = `${active ? 20 : 18}px "Material Symbols Outlined"`;
-  ctx.fillStyle    = active ? 'white' : CAT_COLOR[category];
+  ctx.fillStyle    = 'white';
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(CAT_ICON[category], cx, cy + 1);
@@ -147,7 +161,7 @@ function animatePin(
     const ease = 1 - Math.pow(1 - t, 3);
     const size = from + (to - from) * ease;
     entity.billboard.width  = size;
-    entity.billboard.height = size;
+    entity.billboard.height = Math.round(size * PIN_H_RATIO);
     if (t < 1) requestAnimationFrame(tick);
     else onDone?.();
   };
@@ -224,8 +238,8 @@ async function main(): Promise<void> {
       billboard: {
         image:                    buildPin(ev.category, false),
         width:                    INACTIVE_SIZE,
-        height:                   INACTIVE_SIZE,
-        verticalOrigin:           Cesium.VerticalOrigin.CENTER,
+        height:                   Math.round(INACTIVE_SIZE * PIN_H_RATIO),
+        verticalOrigin:           Cesium.VerticalOrigin.BOTTOM,
         heightReference:          Cesium.HeightReference.CLAMP_TO_GROUND,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
@@ -271,7 +285,7 @@ async function main(): Promise<void> {
     const ent = entityMap.get(id)!;
     ent.billboard.image  = buildPin(ev.category, true);
     ent.billboard.width  = INACTIVE_SIZE;
-    ent.billboard.height = INACTIVE_SIZE;
+    ent.billboard.height = Math.round(INACTIVE_SIZE * PIN_H_RATIO);
     animatePin(id, ent, INACTIVE_SIZE, ACTIVE_SIZE, 200);
   }
 
@@ -284,13 +298,14 @@ async function main(): Promise<void> {
     animatePin(id, ent, ACTIVE_SIZE, INACTIVE_SIZE, 180, () => {
       ent.billboard.image  = buildPin(ev.category, false);
       ent.billboard.width  = INACTIVE_SIZE;
-      ent.billboard.height = INACTIVE_SIZE;
+      ent.billboard.height = Math.round(INACTIVE_SIZE * PIN_H_RATIO);
     });
   }
 
   function showPulse(x: number, y: number, category?: Category): void {
-    pulseEl.style.left       = `${x}px`;
-    pulseEl.style.top        = `${y}px`;
+    // x,y = pin tip screen pos; offset so pulse element's circle center (20,20) lands on pin head
+    pulseEl.style.left       = `${Math.round(x) - 20}px`;
+    pulseEl.style.top        = `${Math.round(y) - 64}px`;
     pulseEl.style.background = category ? CAT_COLOR[category] : '#0ea5e9';
     pulseEl.classList.add('visible');
   }
@@ -1115,8 +1130,8 @@ async function main(): Promise<void> {
           const cart = ent.position.getValue(viewer.clock.currentTime);
           const sc   = cart && viewer.scene.cartesianToCanvasCoordinates(cart);
           if (sc) {
-            pulseEl.style.left = `${Math.round(sc.x)}px`;
-            pulseEl.style.top  = `${Math.round(sc.y)}px`;
+            pulseEl.style.left = `${Math.round(sc.x) - 20}px`;
+            pulseEl.style.top  = `${Math.round(sc.y) - 64}px`;
           }
         } catch { /* pin off-screen */ }
       }
@@ -1129,8 +1144,9 @@ async function main(): Promise<void> {
           const cart = ent.position.getValue(viewer.clock.currentTime);
           const sc   = cart && viewer.scene.cartesianToCanvasCoordinates(cart);
           if (sc) {
+            // Offset upward: past the tip (44px to circle center) + card clearance (28px)
             cardEl.style.left = `${Math.round(sc.x)}px`;
-            cardEl.style.top  = `${Math.round(sc.y) - 24}px`;
+            cardEl.style.top  = `${Math.round(sc.y) - 72}px`;
           }
         } catch { /* pin off-screen */ }
       }

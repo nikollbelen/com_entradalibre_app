@@ -330,26 +330,28 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: 'Inter', system-u
   to   { opacity: 1; transform: translate(-50%, -100%) translateY(-16px); }
 }
 
-/* ── Pulse ring (shown on hover + selected) ───────────── */
+/* ── Pulse (shown on hover + selected) — teardrop shape ── */
 #pin-pulse {
   position: fixed;
   z-index: 8;
   pointer-events: none;
-  width: 48px;
-  height: 48px;
-  border-radius: 9999px;
+  width: 40px;
+  height: 54px;
   background: #0ea5e9;
   display: none;
-  transform: translate(-50%, -50%);
+  /* Teardrop: circle r=20 centered at (20,20), tip at (20,54) */
+  clip-path: path('M 20 0 C 31.05 0 40 8.95 40 20 C 40 29 27 54 20 54 C 13 54 0 29 0 20 C 0 8.95 8.95 0 20 0 Z');
+  /* Scale from circle center so the pin shape pulses outward from the head */
+  transform-origin: 20px 20px;
 }
 #pin-pulse.visible {
   display: block;
   animation: pin-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 @keyframes pin-pulse {
-  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-  50%  { transform: translate(-50%, -50%) scale(2); opacity: 0;   }
-  100% { transform: translate(-50%, -50%) scale(1); opacity: 0;   }
+  0%   { opacity: 0.5; transform: scale(1);   }
+  50%  { opacity: 0;   transform: scale(2.2); }
+  100% { opacity: 0;   transform: scale(1);   }
 }
 
 /* ── Mobile overlay ───────────────────────────────────── */
