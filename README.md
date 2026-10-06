@@ -7,12 +7,24 @@ Visor interactivo de eventos culturales gratuitos sobre mapa 3D vectorial, const
 ## Características
 
 - Mapa 3D interactivo con pines por categoría (color-coded)
+- Pines personalizados dibujados en canvas con iconos de Material Symbols
+- Animación de pin activo y pulso visual al pasar el cursor o seleccionar
 - Filtros por categoría, formato, fecha y tipo (eventos / recurrentes)
+- Calendario con presets: cualquier fecha, este fin de semana, esta semana y este mes
+- Selección de rango de fechas personalizado
 - Búsqueda con debounce en tiempo real
-- Tarjeta de detalle al hacer clic en un pin (horarios, venue, enlace)
+- Búsqueda por título, venue o categoría
+- Tarjeta de detalle al hacer clic en un pin (horarios, venue, formato, categoría y enlace)
+- Estado abierto/cerrado para eventos permanentes según el horario del día
+- Desplegable semanal de horarios para espacios permanentes
+- Modal de conflicto cuando un resultado está oculto por filtros, con opción para limpiar filtros
 - Layout responsivo: barra superior en escritorio, barra inferior en móvil
+- Búsqueda fullscreen en móvil
+- Modal de filtros adaptado a móvil
+- Botones de zoom con animación suave
 - Botón de ubicación GPS con animación `flyTo`
 - Preloader con logo al iniciar
+- Datos editables desde `public/events.json`
 
 ---
 
@@ -20,10 +32,17 @@ Visor interactivo de eventos culturales gratuitos sobre mapa 3D vectorial, const
 
 - Node.js 18+
 - npm 9+
+- Token de Cesium Ion
+- Navegador moderno con soporte WebGL
 
 ---
 
-## Instalación
+## Instalación después de clonar
+
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd com_entradalibre_app
+```
 
 ```bash
 npm install
@@ -136,3 +155,10 @@ com_entradalibre_app/
 | OpenStreetMap | — | Capa base del mapa (tiles vectoriales) |
 | Material Symbols | — | Iconografía (Google Fonts CDN) |
 | Inter | — | Tipografía (Google Fonts CDN) |
+
+## Notas de datos
+
+- Los eventos permanentes usan `frequency_type: "permanent"` y pueden mostrar horarios semanales.
+- Los eventos temporales usan `frequency_type: "temporary"` y se filtran con `start_date` / `end_date`.
+- Las categorías y formatos se detectan dinámicamente desde `events.json`; si agregas una nueva categoría sin icono definido, se mostrará con icono genérico.
+- Las coordenadas deben estar en latitud/longitud decimal para que Cesium ubique correctamente cada pin.
